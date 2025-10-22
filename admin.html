@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        /* ================== */
+        /* CSS VARIABLES      */
+        /* ================== */
+        :root {
+            --dark-navy: #0a192f;
+            --light-navy: #112240;
+            --lightest-navy: #233554;
+            --slate: #8892b0;
+            --light-slate: #a8b2d1;
+            --lightest-slate: #ccd6f6;
+            --green: #64ffda;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+        }
+
+        /* ================== */
+        /* GLOBAL STYLES      */
+        /* ================== */
+        body { 
+            font-family: var(--font-sans); 
+            background-color: var(--dark-navy);
+            margin: 0; 
+            color: var(--slate);
+        }
+
+        button { 
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--green);
+            background-color: transparent;
+            border: 1px solid var(--green); 
+            border-radius: 4px; 
+            padding: 0.75rem 1rem;
+            line-height: 1;
+            cursor: pointer; 
+            transition: all 0.25s ease; 
+        }
+        button:hover { 
+            background-color: rgba(100, 255, 218, 0.1);
+        }
+        button.delete { background: #e11d48; color: white; border: none; }
+        button.delete:hover { background: #c51a40; }
+        button.new { background: #16a34a; color: white; border: none; margin-bottom: 1rem; }
+        button.new:hover { background: #15803d; }
+
+        input, textarea { 
+            width: 100%; 
+            padding: 0.75rem; 
+            border: 1px solid var(--lightest-navy);
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-family: inherit; 
+            background-color: var(--light-navy);
+            color: var(--lightest-slate);
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+        textarea { min-height: 120px; resize: vertical; }
+        .form-group { margin-bottom: 1rem; }
+        label { 
+            display: block; 
+            margin-bottom: 0.5rem; 
+            font-weight: 500; 
+            color: var(--lightest-slate);
+        }
+
+        /* ================== */
+        /* LOGIN CONTAINER    */
+        /* ================== */
+        #login-container {
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+        }
+        .login-card { 
+            background: var(--light-navy);
+            border-radius: 8px; 
+            padding: 2rem; 
+            width: 320px; 
+        }
+        .login-card h1 { 
+            text-align: center; 
+            margin-top: 0; 
+            color: var(--lightest-slate);
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .login-card button { 
+            width: 100%; 
+            font-size: 1rem; 
+            margin-top: 1rem;
+        }
+        #error-message { 
+            color: #f87171;
+            text-align: center; 
+            margin-top: 1rem; 
+            display: none; 
+        }
+
+        /* ================== */
+        /* ADMIN CONTAINER    */
+        /* ================== */
+        #admin-container {
+            max-width: 900px; 
+            margin: 2rem auto;
+            background: var(--light-navy);
+            border-radius: 8px; 
+            padding: 2rem;
+        }
+        h1, h2 { 
+            color: var(--lightest-slate);
+            border-bottom: 2px solid var(--green);
+            padding-bottom: 0.5rem; 
+            margin-bottom: 1.5rem;
+        }
+        h1 { display: flex; justify-content: space-between; align-items: center; }
+        form { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 2rem; }
+        .form-full { grid-column: 1 / -1; }
+        
+        .list-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 1rem; 
+            border-bottom: 1px solid var(--lightest-navy);
+            color: var(--light-slate);
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item-title { font-weight: 600; color: var(--lightest-slate); }
+        .list-item-actions { display: flex; gap: 0.5rem; }
+
+    </style>
+</head>
+<body>
+
+    <div id="login-container">
+        <div class="login-card">
+            <h1>Admin Login</h1>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit">Login</button>
+                <p id="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-container" style="display: none;">
+        <h1>
+            <span>Admin Panel</span>
+            <button id="logout-button">Logout</button>
+        </h1>
+
+        <section id="about-admin">
+            <h2>About Section</h2>
+            <form id="about-form">
+                <div class="form-group">
+                    <label for="about-greeting">Greeting (e.g., "Hi, my name is")</label>
+                    <input type="text" id="about-greeting">
+                </div>
+                <div class="form-group">
+                    <label for="about-name">Name</label>
+                    <input type="text" id="about-name">
+                </div>
+                <div class="form-group">
+                    <label for="about-headline">Headline (e.g., "I build things for the web.")</label>
+                    <input type="text" id="about-headline">
+                </div>
+                <div class="form-group form-full">
+                    <label for="about-bio">Bio (HTML is allowed)</label>
+                    <textarea id="about-bio"></textarea>
+                </div>
+                <button type="submit">Save About</button>
+            </form>
+        </section>
+
+        <section id="experience-admin">
+            <h2>Experience Section</h2>
+            <button class="new" id="new-exp-button">Add New Experience</button>
+            
+            <form id="experience-form" style="display: none;">
+                <input type="hidden" id="experience-id">
+                <div class="form-group">
+                    <label for="exp-company">Company</label>
+                    <input type="text" id="exp-company" required>
+                </div>
+                <div class="form-group">
+                    <label for="exp-title">Title</label>
+                    <input type="text" id="exp-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="exp-date">Date Range</label>
+                    <input type="text" id="exp-date">
+                </div>
+                <div class="form-group">
+                    <label for="exp-order">Order (1 = first tab)</label>
+                    <input type="number" id="exp-order" required>
+                </div>
+                <div class="form-group form-full">
+                    <label for="exp-responsibilities">Responsibilities (One per line)</label>
+                    <textarea id="exp-responsibilities"></textarea>
+                </div>
+                <button type="submit">Save Experience</button>
+            </form>
+
+            <div id="experience-list"></div>
+        </section>
+
+        <section id="work-admin">
+            <h2>Work (Projects) Section</h2>
+            <button class="new" id="new-project-button">Add New Project</button>
+
+            <form id="project-form" style="display: none;">
+                <input type="hidden" id="project-id">
+                
+                <div class="form-group">
+                    <label for="proj-overline">Overline (e.g., "Featured Project")</label>
+                    <input type="text" id="proj-overline">
+                </div>
+                <div class="form-group">
+                    <label for="proj-title">Title</label>
+                    <input type="text" id="proj-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="proj-order">Order (1 = bottom, 2 = next up, etc.)</label>
+                    <input type="number" id="proj-order" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="proj-image-url">Image URL</label>
+                    <input type="url" id="proj-image-url" placeholder="https://example.com/image.png">
+                </div>
+
+                <div class="form-group form-full">
+                    <label for="proj-description">Description</label>
+                    <textarea id="proj-description"></textarea>
+                </div>
+                <div class="form-group form-full">
+                    <label for="proj-tech">Tech List (One per line)</label>
+                    <textarea id="proj-tech"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="proj-github">GitHub URL (Optional)</label>
+                    <input type="url" id="proj-github">
+                </div>
+                <div class="form-group">
+                    <label for="proj-external">External URL (Optional)</label>
+                    <input type="url" id="proj-external">
+                </div>
+                <button type="submit">Save Project</button>
+            </form>
+
+            <div id="project-list"></div>
+        </section>
+
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAw6QrKO6fVhZURIg25Q4sNJGeszahPeBM",
+            authDomain: "portfolio-fedd0.firebaseapp.com",
+            projectId: "portfolio-fedd0",
+            storageBucket: "portfolio-fedd0.appspot.com",
+            messagingSenderId: "820328967165",
+            appId: "1:820328967165:web:3c6e4e61ad4459af018794",
+            measurementId: "G-XKKLRD3B91"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // Get main containers
+        const loginContainer = document.getElementById("login-container");
+        const adminContainer = document.getElementById("admin-container");
+        const logoutButton = document.getElementById("logout-button");
+        const loginForm = document.getElementById("login-form");
+        const errorMessage = document.getElementById("error-message");
+
+        // --- AUTHENTICATION GUARD ---
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                loginContainer.style.display = "none";
+                adminContainer.style.display = "block";
+                loadAboutData();
+                loadExperienceData();
+                loadProjectData();
+            } else {
+                loginContainer.style.display = "grid"; 
+                adminContainer.style.display = "none";
+            }
+        });
+
+        // --- LOGIN LOGIC ---
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            errorMessage.style.display = "none";
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                console.error("Login failed:", error);
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = "block";
+            }
+        });
+
+        // --- LOGOUT LOGIC ---
+        logoutButton.addEventListener("click", () => {
+            auth.signOut();
+        });
+
+        // --- Helper: Textarea <-> Array ---
+        const listToText = (arr) => (arr || []).join('\n');
+        const textToList = (text) => (text || '').split('\n').filter(item => item.trim() !== '');
+
+        // =======================
+        // ABOUT SECTION LOGIC
+        // =======================
+        const aboutForm = document.getElementById("about-form");
+        const aboutGreeting = document.getElementById("about-greeting");
+        const aboutName = document.getElementById("about-name");
+        const aboutHeadline = document.getElementById("about-headline");
+        const aboutBio = document.getElementById("about-bio");
+        const aboutDocRef = db.collection("siteContent").doc("profile");
+
+        async function loadAboutData() {
+            try {
+                const doc = await aboutDocRef.get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    aboutGreeting.value = data.greeting || '';
+                    aboutName.value = data.name || '';
+                    aboutHeadline.value = data.headline || '';
+                    aboutBio.value = data.bio || '';
+                }
+            } catch (e) { console.error("Error loading about data: ", e); }
+        }
+
+        aboutForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const data = {
+                greeting: aboutGreeting.value,
+                name: aboutName.value,
+                headline: aboutHeadline.value,
+                bio: aboutBio.value
+            };
+            try {
+                await aboutDocRef.set(data, { merge: true });
+                alert("About section saved!");
+            } catch (e) { console.error("Error saving about data: ", e); alert("Error saving: " + e.message); }
+        });
+
+        // =======================
+        // EXPERIENCE SECTION LOGIC
+        // =======================
+        const expForm = document.getElementById("experience-form");
+        const expList = document.getElementById("experience-list");
+        const newExpButton = document.getElementById("new-exp-button");
+        const expIdField = document.getElementById("experience-id");
+        const expCompany = document.getElementById("exp-company");
+        const expTitle = document.getElementById("exp-title");
+        const expDate = document.getElementById("exp-date");
+        const expOrder = document.getElementById("exp-order");
+        const expResponsibilities = document.getElementById("exp-responsibilities");
+
+        const expCollection = db.collection("experience");
+
+        newExpButton.addEventListener("click", () => {
+            expForm.reset();
+            expIdField.value = "";
+            expForm.style.display = "grid";
+            newExpButton.style.display = "none";
+        });
+
+        async function loadExperienceData() {
+            expList.innerHTML = "Loading...";
+            try {
+                const snapshot = await expCollection.orderBy("order").get();
+                expList.innerHTML = "";
+                if (snapshot.empty) {
+                    expList.innerHTML = "<p>No experience items found.</p>";
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const item = document.createElement("div");
+                    item.className = "list-item";
+                    item.innerHTML = `
+                        <span class="list-item-title">${data.order}. ${data.company} - ${data.title}</span>
+                        <div class="list-item-actions">
+                            <button class="edit-exp" data-id="${doc.id}">Edit</button>
+                            <button class="delete delete-exp" data-id="${doc.id}">Delete</button>
+                        </div>
+                    `;
+                    expList.appendChild(item);
+                });
+            } catch (e) { console.error(e); expList.innerHTML = "Error loading data."; }
+        }
+
+        expList.addEventListener("click", async (e) => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+
+            if (e.target.classList.contains("delete-exp")) {
+                if (confirm("Are you sure you want to delete this?")) {
+                    try {
+                        await expCollection.doc(id).delete();
+                        alert("Item deleted.");
+                        loadExperienceData();
+                    } catch (e) { console.error(e); alert("Error deleting item."); }
+                }
+            }
+
+            if (e.target.classList.contains("edit-exp")) {
+                try {
+                    const doc = await expCollection.doc(id).get();
+                    const data = doc.data();
+                    expIdField.value = doc.id;
+                    expCompany.value = data.company;
+                    expTitle.value = data.title;
+                    expDate.value = data.dateRange;
+                    expOrder.value = data.order;
+                    expResponsibilities.value = listToText(data.responsibilities);
+                    
+                    expForm.style.display = "grid";
+                    newExpButton.style.display = "none";
+                    window.scrollTo(0, expForm.offsetTop);
+                } catch (e) { console.error(e); alert("Error loading item for edit."); }
+            }
+        });
+
+        expForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const id = expIdField.value;
+            
+            const data = {
+                company: expCompany.value,
+                title: expTitle.value,
+                dateRange: expDate.value,
+                order: Number(expOrder.value),
+                responsibilities: textToList(expResponsibilities.value)
+            };
+            
+            try {
+                if (id) {
+                    await expCollection.doc(id).update(data);
+                } else {
+                    await expCollection.add(data);
+                }
+                alert("Experience saved!");
+                expForm.reset();
+                expForm.style.display = "none";
+                newExpButton.style.display = "block";
+                loadExperienceData();
+            } catch (e) { 
+                console.error("Error saving experience:", e); 
+                alert("Error saving experience. Check console for details."); 
+            }
+        });
+
+        // ==================================
+        // WORK (PROJECTS) SECTION LOGIC
+        // ==================================
+        const projectForm = document.getElementById("project-form");
+        const projectList = document.getElementById("project-list");
+        const newProjectButton = document.getElementById("new-project-button");
+        const projectIdField = document.getElementById("project-id");
+        const projectImageUrlInput = document.getElementById("proj-image-url"); 
+        const projectOverline = document.getElementById("proj-overline");
+        const projectTitle = document.getElementById("proj-title");
+        const projectOrder = document.getElementById("proj-order");
+        const projectDescription = document.getElementById("proj-description");
+        const projectTech = document.getElementById("proj-tech");
+        const projectGithub = document.getElementById("proj-github");
+        const projectExternal = document.getElementById("proj-external");
+
+        const projectCollection = db.collection("projects");
+
+        newProjectButton.addEventListener("click", () => {
+            projectForm.reset();
+            projectIdField.value = "";
+            projectForm.style.display = "grid";
+            newProjectButton.style.display = "none";
+        });
+        
+        async function loadProjectData() {
+            projectList.innerHTML = "Loading...";
+            try {
+                const snapshot = await projectCollection.orderBy("order", "desc").get();
+                projectList.innerHTML = "";
+                if (snapshot.empty) {
+                    projectList.innerHTML = "<p>No projects found.</p>";
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const item = document.createElement("div");
+                    item.className = "list-item";
+                    item.innerHTML = `
+                        <span class="list-item-title">${data.order}. ${data.title}</span>
+                        <div class="list-item-actions">
+                            <button class="edit-project" data-id="${doc.id}">Edit</button>
+                            <button class="delete delete-project" data-id="${doc.id}">Delete</button>
+                        </div>
+                    `;
+                    projectList.appendChild(item);
+                });
+            } catch (e) { console.error(e); projectList.innerHTML = "Error loading data."; }
+        }
+        
+        projectList.addEventListener("click", async (e) => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+            
+            if (e.target.classList.contains("delete-project")) {
+                if (confirm("Are you sure you want to delete this project?")) {
+                    try {
+                        await projectCollection.doc(id).delete();
+                        alert("Project deleted.");
+                        loadProjectData();
+                    } catch (e) { console.error(e); alert("Error deleting project."); }
+                }
+            }
+
+            if (e.target.classList.contains("edit-project")) {
+                try {
+                    const doc = await projectCollection.doc(id).get();
+                    const data = doc.data();
+                    projectIdField.value = doc.id;
+                    projectImageUrlInput.value = data.imageURL || ""; 
+                    projectOverline.value = data.overline || "";
+                    projectTitle.value = data.title;
+                    projectOrder.value = data.order;
+                    projectDescription.value = data.description || "";
+                    projectTech.value = listToText(data.techList);
+                    projectGithub.value = data.githubURL || "";
+                    projectExternal.value = data.externalURL || "";
+                    
+                    projectForm.style.display = "grid";
+                    newProjectButton.style.display = "none";
+                    window.scrollTo(0, projectForm.offsetTop);
+                } catch (e) { console.error(e); alert("Error loading project for edit."); }
+            }
+        });
+
+        projectForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const id = projectIdField.value;
+
+            try {
+                const data = {
+                    overline: projectOverline.value,
+                    title: projectTitle.value,
+                    order: Number(projectOrder.value),
+                    description: projectDescription.value,
+                    techList: textToList(projectTech.value),
+                    githubURL: projectGithub.value,
+                    externalURL: projectExternal.value,
+                    imageURL: projectImageUrlInput.value 
+                };
+
+                if (id) {
+                    await projectCollection.doc(id).update(data);
+                } else {
+                    await projectCollection.add(data);
+                }
+                
+                alert("Project saved!");
+                projectForm.reset();
+                projectForm.style.display = "none";
+                newProjectButton.style.display = "block";
+                loadProjectData();
+            } catch (e) { 
+                console.error(e); 
+                alert("Error saving project: " + e.message); 
+            }
+        });
+    </script>
+</body>
+</html>
