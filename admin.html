@@ -203,6 +203,11 @@
                     <label for="exp-company">Company</label>
                     <input type="text" id="exp-company" required>
                 </div>
+                
+                <div class="form-group">
+                    <label for="exp-company-url">Company URL (Optional)</label>
+                    <input type="url" id="exp-company-url" placeholder="https://company.com">
+                </div>
                 <div class="form-group">
                     <label for="exp-title">Title</label>
                     <input type="text" id="exp-title" required>
@@ -382,6 +387,7 @@
         const newExpButton = document.getElementById("new-exp-button");
         const expIdField = document.getElementById("experience-id");
         const expCompany = document.getElementById("exp-company");
+        const expCompanyUrl = document.getElementById("exp-company-url"); // MODIFICATION: Get new element
         const expTitle = document.getElementById("exp-title");
         const expDate = document.getElementById("exp-date");
         const expOrder = document.getElementById("exp-order");
@@ -441,6 +447,7 @@
                     const data = doc.data();
                     expIdField.value = doc.id;
                     expCompany.value = data.company;
+                    expCompanyUrl.value = data.companyURL || ''; // MODIFICATION: Load data into form
                     expTitle.value = data.title;
                     expDate.value = data.dateRange;
                     expOrder.value = data.order;
@@ -459,6 +466,7 @@
             
             const data = {
                 company: expCompany.value,
+                companyURL: expCompanyUrl.value, // MODIFICATION: Add to data object
                 title: expTitle.value,
                 dateRange: expDate.value,
                 order: Number(expOrder.value),

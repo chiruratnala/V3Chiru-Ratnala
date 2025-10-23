@@ -1014,6 +1014,12 @@
             color: var(--green);
         }
         
+        /* --- MODIFICATION START: Added hover effect --- */
+        .experience-panel .company:hover {
+            color: rgba(100, 255, 218, 0.8);
+        }
+        /* --- MODIFICATION END --- */
+        
        .experience-panel .date {
             font-family: var(--font-mono);
             font-size: 13px;
@@ -1666,6 +1672,9 @@
             document.getElementById("about-bio").innerHTML = data.bio || "";
         }
 
+        // =================================================================
+        // --- THIS IS THE UPDATED FUNCTION ---
+        // =================================================================
         async function loadExperienceData() {
             const tabsList = document.getElementById("experience-tabs-list");
             const panelsList = document.getElementById("experience-panels-list");
@@ -1695,21 +1704,35 @@
                 tabsList.appendChild(tabButton);
 
                 const responsibilitiesHTML = (job.responsibilities || []).map(item => `<li>${item}</li>`).join('');
+                
+                // --- MODIFICATION START: Added '@' to the variable ---
+                const companyHTML = job.companyURL
+                    ? `<a href="${job.companyURL}" class="company" target="_blank" rel="noopener noreferrer">@ ${job.company}</a>`
+                    : `<span class="company">@ ${job.company}</span>`;
+                // --- MODIFICATION END ---
+
                 const panelDiv = document.createElement('div');
                 panelDiv.className = `experience-panel ${isActive}`;
                 panelDiv.id = `panel-${tabIndex}`;
                 panelDiv.setAttribute('role', 'tabpanel');
                 panelDiv.setAttribute('aria-labelledby', `tab-${tabIndex}`);
+                
+                // --- MODIFICATION START: Removed '@' from here ---
                 panelDiv.innerHTML = `
-                    <h3>${job.title} @ <span class="company">${job.company}</span></h3>
+                    <h3>${job.title} ${companyHTML}</h3>
                     <p class="date">${job.dateRange}</p>
                     <ul>${responsibilitiesHTML}</ul>
                 `;
+                // --- MODIFICATION END ---
+                
                 panelsList.appendChild(panelDiv);
 
                 tabIndex++;
             });
         }
+        // =================================================================
+        // --- END OF UPDATED FUNCTION ---
+        // =================================================================
 
         async function loadProjectData() {
             const container = document.getElementById("project-list-container");
